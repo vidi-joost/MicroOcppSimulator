@@ -9,7 +9,7 @@
 	url = https://github.com/matth-x/MicroOcppMongoose
 [submodule "lib/mongoose"]
 	path = lib/mongoose
-	url = https://github.com/cesanta/mongoose
+	url = https://github.com/vidi-joost/mongoose
 [submodule "webapp-src"]
 	path = webapp-src
 	url = https://github.com/vidi-joost/micro-ocpp-dashboard.git
