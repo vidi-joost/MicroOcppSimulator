@@ -1,13 +1,9 @@
 # Use Alpine Linux as the base image
-FROM alpine:latest
+FROM debian:latest
 
 # Update package lists and install necessary dependencies
-RUN apk update && \
-    apk add --no-cache \
-    git \
-    cmake \
-    openssl-dev \
-    build-base
+RUN apt-get update && apt-get -y install \
+    git cmake libssl-dev build-essential
 
 # Set the working directory inside the container
 WORKDIR /MicroOcppSimulator
