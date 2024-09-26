@@ -7,6 +7,9 @@
 #include <MicroOcpp.h>
 #include "evse.h"
 #include "api.h"
+#include <netinet/in.h>
+#include <arpa/nameser.h>
+#include <resolv.h>
 
 #if MO_NUMCONNECTORS == 3
 std::array<Evse, MO_NUMCONNECTORS - 1> connectors {{1,2}};
@@ -93,9 +96,73 @@ void app_loop() {
 
 #if MO_NETLIB == MO_NETLIB_MONGOOSE
 
+struct dnsConfig {
+    const char* dns4;
+    const char* dns6;
+};
+
+dnsConfig get_dns_config() {
+    dnsConfig config = {
+        .dns4 = NULL,
+        .dns6 = NULL
+    };
+
+    if(res_init() == 0)
+    {
+        for(int i = 0; i < MAXNS; i++)
+        {
+            sockaddr_in resolver = _res.nsaddr_list[i];
+
+            char name[INET6_ADDRSTRLEN];
+            char port[10];
+            char full[INET6_ADDRSTRLEN + 20];
+            full[0] = '\0';
+
+            switch(resolver.sin_family) {
+                case AF_INET:
+                    getnameinfo((sockaddr*) &resolver, sizeof(sockaddr_in), name, sizeof(name), port, sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV);
+                    if(config.dns4 == NULL) {
+                        strcat(full, "udp://");
+                        strcat(full, name);
+                        strcat(full, ":");
+                        strcat(full, port);
+                        config.dns4 = strdup(full);
+                        printf("IP4: %s\n", config.dns4);
+                    }
+                    break;
+                case AF_INET6:
+                    getnameinfo((sockaddr*) &resolver, sizeof(sockaddr_in6), name, sizeof(name), port, sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV);
+                    if(config.dns6 == NULL)
+                    {
+                        strcat(full, "udp://[");
+                        strcat(full, name);
+                        strcat(full, "]:");
+                        strcat(full, port);
+                        config.dns6 = strdup(full);
+                        printf("IP6: %s\n", config.dns4);
+                    }
+
+                    break;
+                default:
+                    printf("Unknown AF\n");
+            }
+        }
+    }
+
+    return config;
+}
+
 int main() {
     mg_log_set(MG_LL_INFO);                            
     mg_mgr_init(&mgr);
+
+    auto dnsConfig = get_dns_config();
+    if(dnsConfig.dns4) {
+        mgr.dns4.url = dnsConfig.dns4;
+    }
+    if(dnsConfig.dns6) {
+        mgr.dns6.url = dnsConfig.dns6;
+    }
 
     mg_http_listen(&mgr, "0.0.0.0:8000", http_serve, NULL);     // Create listening connection
 
